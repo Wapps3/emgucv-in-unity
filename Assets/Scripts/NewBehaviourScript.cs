@@ -21,7 +21,7 @@ public class NewBehaviourScript : MonoBehaviour
     void Start()
     {
         string path = "D:\\M2\\Interface\\emgucv-in-unity\\Assets\\Video\\2019-10-29 17-34-21.mp4";
-        video = new VideoCapture(path);   
+        video = new VideoCapture(0);   
 
         //video = new VideoCapture(0); //First webcam start at 0
     }
@@ -34,13 +34,27 @@ public class NewBehaviourScript : MonoBehaviour
         //Query the frame
         image = video.QueryFrame();
 
+        //Gray img
         Mat imgGray = image.Clone();
         CvInvoke.CvtColor(image,imgGray,ColorConversion.Bgr2Gray);
 
+        //HSV img
         Mat imgHSV = image.Clone();
         CvInvoke.CvtColor(image, imgHSV, ColorConversion.Bgr2Hsv);
 
-        CvInvoke.Flip(image, image, FlipType.Horizontal);
+        //Blur
+        Mat imgHSVBlur = imgHSV.Clone();
+        CvInvoke.GaussianBlur(imgHSVBlur, imgHSVBlur, new Size(21,21) ,0,0, BorderType.Reflect101);
+
+        //New Img
+        Image<Bgr, Byte> newImg = image.ToImage<Bgr, Byte>();
+
+        Hsv lowerBound = new Hsv(60,0,0);
+        Hsv upperBound = new Hsv(180,255,255);
+
+        newImg.inRange(lowerBound, upperBound);
+
+       
 
         //Invoke C++ interface fonction "Imshow"
         CvInvoke.Imshow("Video view", image);
@@ -50,6 +64,12 @@ public class NewBehaviourScript : MonoBehaviour
 
         //Invoke C++ interface fonction "Imshow"
         CvInvoke.Imshow("Video view hsv", imgHSV);
+
+        //Invoke C++ interface fonction "Imshow"
+        CvInvoke.Imshow("Video view hsv with blur", imgHSVBlur);
+
+        // Invoke C++ interface fonction "Imshow"
+        CvInvoke.Imshow("Video view image format", newImg);
 
         //Block thread for 24 milisecond
         CvInvoke.WaitKey(24);
