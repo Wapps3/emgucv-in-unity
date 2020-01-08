@@ -28,13 +28,28 @@ public class NewBehaviourScript : MonoBehaviour
     public int vMin;
     [Range(0, 255)]
     public int vMax = 255;
+
+    public int sizeX;
+    public int sizeY;
+
+    public int coordX;
+    public int coordY;
+
+    public ElementShape eltShape;
+
+    public int nbrIteration;
+    public BorderType border;
+
+    public ChainApproxMethod chainApprox;
+    public RetrType retraitType;
+
     
     //VideoCapture webcam;
 
     // Start is called before the first frame update
     void Start()
     {
-        //string path = "D:\\M2\\Interface\\emgucv-in-unity\\Assets\\Video\\2019-10-29 17-34-21.mp4";
+        // string path = "D:\\M2\\Interface\\emgucv-in-unity\\Assets\\Video\\2019-10-29 17-34-21.mp4";
         video = new VideoCapture(0);   
 
         //video = new VideoCapture(0); //First webcam start at 0
@@ -46,6 +61,8 @@ public class NewBehaviourScript : MonoBehaviour
         //CvInvoke.CvtColor(image, imgGray, ColorConversion.Bgr2Gray);
 
         Mat image;
+        
+        Mat structElt = CvInvoke.GetStructuringElement(eltShape,new Size(sizeX,sizeY) , new Point(coordX,coordY) );
 
         //Query the frame
         image = video.QueryFrame();
@@ -66,17 +83,44 @@ public class NewBehaviourScript : MonoBehaviour
 
         Image<Gray,Byte> thresholdImg = newImg.InRange(lowerBound, higherBound);
 
+        Image<Gray, Byte> thresholdImgErode = thresholdImg.Clone();
+
+        CvInvoke.Erode(thresholdImg, thresholdImgErode, structElt, new Point(-1,-1), nbrIteration, border, new MCvScalar(0) );
+        CvInvoke.Dilate(thresholdImgErode, thresholdImgErode, structElt, new Point(-1, -1), nbrIteration, border, new MCvScalar(0));
+
+        VectorOfVectorOfPoint contours = new VectorOfVectorOfPoint();
+        VectorOfPoint biggestContour = new VectorOfPoint();
+        int biggestContourIndex = 0;
+        double biggestContourArea = 0;
+
+        Mat hierarchy = new Mat();
+        CvInvoke.FindContours(thresholdImgErode, contours, hierarchy, retraitType, chainApprox);
+
+        
+        for(int i = 0; i < contours.Size ; i++)
+        {
+            if( biggestContourArea < CvInvoke.ContourArea(contours[i]) )
+            {
+                biggestContourArea = CvInvoke.ContourArea(contours[i]);
+                biggestContour = contours[i];
+                biggestContourIndex = i;
+            }
+        }
+
+        CvInvoke.DrawContours(image,contours, biggestContourIndex, new MCvScalar(0,0,0));
+        
+
         //Invoke C++ interface fonction "Imshow"
         CvInvoke.Imshow("Video view", image);
 
         //Invoke C++ interface fonction "Imshow"
         CvInvoke.Imshow("Video view hsv", imgHSV);
 
-        //Invoke C++ interface fonction "Imshow"
-        CvInvoke.Imshow("Video view hsv with blur", imgHSVBlur);
-
         // Invoke C++ interface fonction "Imshow"
-        CvInvoke.Imshow("Video view image seuillage", thresholdImg);
+        CvInvoke.Imshow("Video view threshhold", thresholdImg);
+
+        //Invoke C++ interface fonction "Imshow"
+        CvInvoke.Imshow("Video view threshold erode + dilate", thresholdImgErode);
 
         //Block thread for 24 milisecond
         CvInvoke.WaitKey(24);
